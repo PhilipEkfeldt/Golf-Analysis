@@ -3,22 +3,28 @@ import dash_core_components as dcc
 import dash_html_components as html
 import plotly.graph_objs as go
 import pandas as pd
-
+#Load data
 data_2018 =pd.read_csv('data/player_category_sg_2018', header=[0, 1], index_col=[0,1])
 
+#Player dictionary
 player_options = pd.DataFrame()
 
 player_options['label'] = data_2018.index.get_level_values(level = 1)
 player_options['value'] = data_2018.index.get_level_values(level = 0)
 
 player_options = player_options.to_dict('records')
+
+
 def sort_index(string):
     return int(string.replace('=', '-').partition("-")[2])
 
 def getSortValue(category):
     return distance_categories.index(category)
 
+#Sort categories in correct order
 distance_categories = sorted(data_2018.columns.levels[0], key= sort_index )
+
+#Stylesheet 
 external_stylesheets = [
     'https://codepen.io/chriddyp/pen/bWLwgP.css',
     {
@@ -27,6 +33,7 @@ external_stylesheets = [
     }
 ]
 
+#Define max and min player based on darta
 max_player = pd.DataFrame( columns=['cat', 'player_name', 'adj_sg']) 
 
 min_player = pd.DataFrame( columns=['cat', 'player_name', 'adj_sg'])
@@ -41,9 +48,10 @@ for cat in distance_categories:
     max_row = max_df.loc[[max_df['adj_sg'].idxmax(axis=0)]].reset_index()[['player_name', 'adj_sg']]
     max_row['cat'] = cat
     max_player = max_player.append(max_row, ignore_index=True, sort=False)
-
+#Create app
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
+#Layout
 app.layout = html.Div(children=[
     html.H2(
         children='Strokes Gained - Distance Categories',
@@ -72,13 +80,12 @@ app.layout = html.Div(children=[
     ],
     labelClassName='checkable',
     values=[],
-    #labelStyle={'display': 'inline-block'}
-
     ),
     dcc.Graph(
         id='chart',
     )
 ])
+#Callback to update chart
 @app.callback(
     dash.dependencies.Output('chart', 'figure'),
     [dash.dependencies.Input('player_selection', 'value'),
@@ -93,6 +100,7 @@ def update_graph(player_selection, max_min):
             playerdf.columns =  [ '95_up', '95_low', 'adj_sg', 'shot_count', 'std', 'std_err']
             playerdf['cat_ind'] = pd.Series(playerdf.index.values).apply(getSortValue).values
             playerdf = playerdf.sort_values('cat_ind')
+            #Show confidence interval
             if 'Show95' in max_min:
                 pplot = go.Scatter (  
                     x = playerdf.index.values, 
@@ -115,13 +123,13 @@ def update_graph(player_selection, max_min):
                 ) 
             plots.append(pplot)
 
-
+    #Checkbox settings
     if "ShowMax" in max_min:
         plots.append( go.Scatter( x = max_player['cat'], y = max_player['adj_sg'].round(3), name = "Max", text = max_player['player_name']) )
 
     if "ShowMin" in max_min:
         plots.append( go.Scatter( x = min_player['cat'], y = min_player['adj_sg'].round(3), name = "Min", text = min_player['player_name'] ) )
-
+    
     layout = go.Layout(
             title="Average strokes gained per shot in category",
             xaxis=dict(
