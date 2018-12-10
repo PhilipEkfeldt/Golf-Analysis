@@ -6,12 +6,12 @@ import pandas as pd
 
 data_2018 =pd.read_csv('data/player_category_sg_2018', header=[0, 1], index_col=[0,1])
 
-options = pd.DataFrame()
+player_options = pd.DataFrame()
 
-options['label'] = data_2018.index.get_level_values(level = 1)
-options['value'] = data_2018.index.get_level_values(level = 0)
+player_options['label'] = data_2018.index.get_level_values(level = 1)
+player_options['value'] = data_2018.index.get_level_values(level = 0)
 
-optionsP = options.to_dict('records')
+player_options = player_options.to_dict('records')
 def sort_index(string):
     return int(string.replace('=', '-').partition("-")[2])
 
@@ -19,32 +19,38 @@ def getSortValue(category):
     return distance_categories.index(category)
 
 distance_categories = sorted(data_2018.columns.levels[0], key= sort_index )
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+external_stylesheets = [
+    'https://codepen.io/chriddyp/pen/bWLwgP.css',
+    {
+        'href': 'https://codepen.io/chriddyp/pen/bWLwgP.css',
+        'rel': 'stylesheet',
+    }
+]
 
-max_player = pd.DataFrame( columns=['cat', 'player_name', 'adjusted_strokes_gained']) 
+max_player = pd.DataFrame( columns=['cat', 'player_name', 'adj_sg']) 
 
-min_player = pd.DataFrame( columns=['cat', 'player_name', 'adjusted_strokes_gained'])
+min_player = pd.DataFrame( columns=['cat', 'player_name', 'adj_sg'])
 
 for cat in distance_categories:
     min_df = data_2018[cat][data_2018[cat]['shot_count'] > 30]
-    min_row = min_df.loc[[min_df['adjusted_strokes_gained'].idxmin(axis=0)]].reset_index()[['player_name', 'adjusted_strokes_gained']]
+    min_row = min_df.loc[[min_df['adj_sg'].idxmin(axis=0)]].reset_index()[['player_name', 'adj_sg']]
     min_row['cat'] = cat
     min_player = min_player.append(min_row, ignore_index=True, sort=False)
     
     max_df = data_2018[cat][data_2018[cat]['shot_count'] > 30]
-    max_row = max_df.loc[[max_df['adjusted_strokes_gained'].idxmax(axis=0)]].reset_index()[['player_name', 'adjusted_strokes_gained']]
+    max_row = max_df.loc[[max_df['adj_sg'].idxmax(axis=0)]].reset_index()[['player_name', 'adj_sg']]
     max_row['cat'] = cat
     max_player = max_player.append(max_row, ignore_index=True, sort=False)
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 server = app.server
 app.layout = html.Div(children=[
-    html.H1(
+    html.H2(
         children='Strokes Gained - Distance Categories',
         style={
             'textAlign': 'center'
         }),
-    html.H3(
+    html.H4(
         children='Data source: PGA Tour Shotlink',
         style={
             'textAlign': 'center'
@@ -52,7 +58,7 @@ app.layout = html.Div(children=[
         ),
     dcc.Dropdown(
         id="player_selection",
-        options=optionsP,
+        options=player_options,
         multi=True,
         value = ['8793']
     ),
@@ -61,8 +67,13 @@ app.layout = html.Div(children=[
     options=[
         {'label': 'Show max', 'value': 'ShowMax'},
         {'label': 'Show min', 'value': 'ShowMin'},
+        {'label': 'Show 95% confidence interval', 'value': 'Show95'},
+
     ],
-    values=[]
+    labelClassName='checkable',
+    values=[],
+    #labelStyle={'display': 'inline-block'}
+
     ),
     dcc.Graph(
         id='chart',
@@ -79,23 +90,37 @@ def update_graph(player_selection, max_min):
         if(len(playerdf) > 0):
             player_name = playerdf.index.get_level_values('player_name')[0]
             playerdf = playerdf.transpose().unstack(level=1)
-            playerdf.columns = ['adj_sg', 'shot_count']
+            playerdf.columns =  [ '95_up', '95_low', 'adj_sg', 'shot_count', 'std', 'std_err']
             playerdf['cat_ind'] = pd.Series(playerdf.index.values).apply(getSortValue).values
             playerdf = playerdf.sort_values('cat_ind')
-            pplot = go.Scatter (  
-                x = playerdf.index.values, 
-                y = playerdf['adj_sg'].round(3), 
-                name = player_name,
-                text =  "Nr of shots: " + playerdf['shot_count'].astype(int).astype(str),
-            )
+            if 'Show95' in max_min:
+                pplot = go.Scatter (  
+                    x = playerdf.index.values, 
+                    y = playerdf['adj_sg'].round(3), 
+                    name = player_name,
+                    text =  "Nr of shots: " + playerdf['shot_count'].astype(int).astype(str),
+                    error_y=dict(
+                    type='data',
+                    symmetric=True,
+                    array=1.96*playerdf['std_err'],
+                    )        
+                )
+            else:
+                    pplot = go.Scatter (  
+                    x = playerdf.index.values, 
+                    y = playerdf['adj_sg'].round(3), 
+                    name = player_name,
+                    text =  "Nr of shots: " + playerdf['shot_count'].astype(int).astype(str),
+                    
+                ) 
             plots.append(pplot)
 
 
     if "ShowMax" in max_min:
-        plots.append( go.Scatter( x = max_player['cat'], y = max_player['adjusted_strokes_gained'].round(3), name = "Max", text = max_player['player_name']) )
+        plots.append( go.Scatter( x = max_player['cat'], y = max_player['adj_sg'].round(3), name = "Max", text = max_player['player_name']) )
 
     if "ShowMin" in max_min:
-        plots.append( go.Scatter( x = min_player['cat'], y = min_player['adjusted_strokes_gained'].round(3), name = "Min", text = min_player['player_name'] ) )
+        plots.append( go.Scatter( x = min_player['cat'], y = min_player['adj_sg'].round(3), name = "Min", text = min_player['player_name'] ) )
 
     layout = go.Layout(
             title="Average strokes gained per shot in category",
