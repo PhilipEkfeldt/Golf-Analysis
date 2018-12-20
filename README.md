@@ -1,5 +1,5 @@
 # PGA_SG_DistanceCategory_Analysis
-Analysis and webapp for analyzing PGA Tour strokes gained for players in different distance categories (excluding putting)
+Analysis and webapp for analyzing PGA Tour strokes gained for players in different distance categories (excluding putting) for the 2017-2018 PGA Tour season. 
 
 To read notebook correctly please use [this](https://colab.research.google.com/github/PhilipEkfeldt/PGA_SG_DistanceCategory_Analysis/blob/master/PGA%20Analysis%202018.ipynb) link
 
