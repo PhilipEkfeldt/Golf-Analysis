@@ -4,7 +4,7 @@ Data courtesy of PGA Tour Shotlink.
 
 Analysis and webapp for analyzing PGA Tour strokes gained for players in different distance categories (excluding putting) for the 2017-2018 PGA Tour season. 
 
-Notebook: [Colaboratory link](https://colab.research.google.com/github/PhilipEkfeldt/Golf-Analysis/blob/master/Approach%20shot%20analysis.ipynb)
+Notebook: [Colaboratory link](https://colab.research.google.com/github/PhilipEkfeldt/Golf-Analysis/blob/master/Approach%20shot%20analysis.ipynb).
 Please use link to correctly view dynamic chart (made in PlotLy/Dash)
 
 Webapp to check out data from other players can be found here:
